@@ -12,12 +12,13 @@ class TestApp(unittest.TestCase):
         # Turn off database initialization for tests
         app.config['TESTING'] = True
         
-    def _create_mock_dog(self, dog_id, name, breed):
+    def _create_mock_dog(self, dog_id, name, breed, total):
         """Helper method to create a mock dog with standard attributes"""
-        dog = MagicMock(spec=['to_dict', 'id', 'name', 'breed'])
+        dog = MagicMock(spec=['to_dict', 'id', 'name', 'breed', 'total'])
         dog.id = dog_id
         dog.name = name
         dog.breed = breed
+        dog.total = total
         dog.to_dict.return_value = {'id': dog_id, 'name': name, 'breed': breed}
         return dog
         
@@ -26,7 +27,6 @@ class TestApp(unittest.TestCase):
         mock_query_instance = MagicMock()
         mock_query.return_value = mock_query_instance
         mock_query_instance.join.return_value = mock_query_instance
-        mock_query_instance.count.return_value = len(dogs)
         mock_query_instance.offset.return_value = mock_query_instance
         mock_query_instance.limit.return_value = mock_query_instance
         mock_query_instance.all.return_value = dogs
@@ -36,8 +36,8 @@ class TestApp(unittest.TestCase):
     def test_get_dogs_success(self, mock_query):
         """Test successful retrieval of multiple dogs"""
         # Arrange
-        dog1 = self._create_mock_dog(1, "Buddy", "Labrador")
-        dog2 = self._create_mock_dog(2, "Max", "German Shepherd")
+        dog1 = self._create_mock_dog(1, "Buddy", "Labrador", 2)
+        dog2 = self._create_mock_dog(2, "Max", "German Shepherd", 2)
         mock_dogs = [dog1, dog2]
         
         self._setup_query_mock(mock_query, mock_dogs)
@@ -65,6 +65,7 @@ class TestApp(unittest.TestCase):
         
         # Verify query was called
         mock_query.assert_called_once()
+        mock_query.return_value.count.assert_not_called()
         
     @patch('app.db.session.query')
     def test_get_dogs_empty(self, mock_query):
@@ -85,7 +86,7 @@ class TestApp(unittest.TestCase):
     def test_get_dogs_structure(self, mock_query):
         """Test the response structure for a single dog"""
         # Arrange
-        dog = self._create_mock_dog(1, "Buddy", "Labrador")
+        dog = self._create_mock_dog(1, "Buddy", "Labrador", 1)
         self._setup_query_mock(mock_query, [dog])
         
         # Act
