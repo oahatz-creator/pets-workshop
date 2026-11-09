@@ -1,6 +1,7 @@
 import os
 from typing import Dict, List, Any, Optional
 from flask import Flask, jsonify, request, Response
+from sqlalchemy import func
 from models import init_db, db, Dog, Breed
 
 # Get the server directory path
@@ -22,13 +23,14 @@ def get_dogs() -> Response:
     per_page = max(1, min(per_page, 100))
 
     query = db.session.query(
-        Dog.id, 
+        Dog.id,
         Dog.name, 
-        Breed.name.label('breed')
+        Breed.name.label('breed'),
+        func.count(Dog.id).over().label('total'),
     ).join(Breed, Dog.breed_id == Breed.id)
     
-    total = query.count()
     dogs_query = query.offset((page - 1) * per_page).limit(per_page).all()
+    total = dogs_query[0].total if dogs_query else 0
     
     dogs_list: List[Dict[str, Any]] = [
         {
