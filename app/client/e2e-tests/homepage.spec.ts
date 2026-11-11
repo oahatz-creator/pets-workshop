@@ -41,7 +41,7 @@ test.describe('Tailspin Shelter Homepage', () => {
 
     const pagination = page.getByTestId('pagination');
     await expect(pagination).toBeVisible();
-    await expect(page.getByTestId('pagination-info')).toContainText('Page 1 of 2');
+    await expect(page.getByTestId('pagination-info')).toContainText('Page 1');
     await expect(page.getByTestId('pagination-next')).toBeVisible();
   });
 

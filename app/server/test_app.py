@@ -26,7 +26,6 @@ class TestApp(unittest.TestCase):
         mock_query_instance = MagicMock()
         mock_query.return_value = mock_query_instance
         mock_query_instance.join.return_value = mock_query_instance
-        mock_query_instance.count.return_value = len(dogs)
         mock_query_instance.offset.return_value = mock_query_instance
         mock_query_instance.limit.return_value = mock_query_instance
         mock_query_instance.all.return_value = dogs
@@ -51,7 +50,7 @@ class TestApp(unittest.TestCase):
         data = json.loads(response.data)
         self.assertEqual(len(data['dogs']), 2)
         self.assertEqual(data['page'], 1)
-        self.assertEqual(data['total'], 2)
+        self.assertFalse(data['has_next'])
         
         # Verify first dog
         self.assertEqual(data['dogs'][0]['id'], 1)
@@ -79,7 +78,7 @@ class TestApp(unittest.TestCase):
         self.assertEqual(response.status_code, 200)
         data = json.loads(response.data)
         self.assertEqual(data['dogs'], [])
-        self.assertEqual(data['total'], 0)
+        self.assertFalse(data['has_next'])
         
     @patch('app.db.session.query')
     def test_get_dogs_structure(self, mock_query):
@@ -95,11 +94,26 @@ class TestApp(unittest.TestCase):
         data = json.loads(response.data)
         self.assertIn('dogs', data)
         self.assertIn('page', data)
-        self.assertIn('total', data)
-        self.assertIn('total_pages', data)
+        self.assertIn('has_next', data)
         self.assertTrue(isinstance(data['dogs'], list))
         self.assertEqual(len(data['dogs']), 1)
         self.assertEqual(set(data['dogs'][0].keys()), {'id', 'name', 'breed'})
+
+    @patch('app.db.session.query')
+    def test_get_dogs_uses_sentinel_row_instead_of_count(self, mock_query):
+        """Test pagination detects another page without an exact total query."""
+        dog1 = self._create_mock_dog(1, "Buddy", "Labrador")
+        dog2 = self._create_mock_dog(2, "Max", "German Shepherd")
+        query = self._setup_query_mock(mock_query, [dog1, dog2])
+
+        response = self.app.get('/api/dogs?per_page=1')
+
+        self.assertEqual(response.status_code, 200)
+        data = json.loads(response.data)
+        self.assertEqual(data['dogs'], [{'id': 1, 'name': 'Buddy', 'breed': 'Labrador'}])
+        self.assertTrue(data['has_next'])
+        query.count.assert_not_called()
+        query.limit.assert_called_once_with(2)
 
 
 if __name__ == '__main__':
