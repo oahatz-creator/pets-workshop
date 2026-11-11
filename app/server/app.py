@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import os
 from typing import Dict, List, Any, Optional
 from flask import Flask, jsonify, request, Response
@@ -27,8 +29,9 @@ def get_dogs() -> Response:
         Breed.name.label('breed')
     ).join(Breed, Dog.breed_id == Breed.id)
     
-    total = query.count()
-    dogs_query = query.offset((page - 1) * per_page).limit(per_page).all()
+    dogs_query = query.offset((page - 1) * per_page).limit(per_page + 1).all()
+    has_next = len(dogs_query) > per_page
+    dogs_query = dogs_query[:per_page]
     
     dogs_list: List[Dict[str, Any]] = [
         {
@@ -43,8 +46,7 @@ def get_dogs() -> Response:
         'dogs': dogs_list,
         'page': page,
         'per_page': per_page,
-        'total': total,
-        'total_pages': max(1, -(-total // per_page))
+        'has_next': has_next
     })
 
 @app.route('/api/dogs/<int:id>', methods=['GET'])
